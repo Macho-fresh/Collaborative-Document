@@ -6,6 +6,7 @@ from .models import *
 from accounts.models import User
 from rest_framework.permissions import IsAuthenticated
 from .serializers import *
+from .permissions import *
 
 class CreateDoc(APIView):
     permission_classes = [IsAuthenticated]
@@ -16,7 +17,7 @@ class CreateDoc(APIView):
         user = User.objects.get(id=user_id)
 
         Document.objects.create(
-            user = user,
+            owner = user,
             title = title,
             content = content,
             version = 1
@@ -30,7 +31,9 @@ class CreateDoc(APIView):
 class GetAllDoc(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
-        doc = Document.objects.all()
+        user_id = request.user.id
+        user = User.objects.get(id=user_id)
+        doc = Document.objects.all(owner=user)
         serializer = DocSerializer(doc)
         return Response({
             serializer.data
@@ -39,7 +42,9 @@ class GetAllDoc(APIView):
 class GetDoc(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, id):
-        doc = Document.objects.get(id=id)
+        user_id = request.user.id
+        user = User.objects.get(id=user_id)
+        doc = Document.objects.get(id=id, owner=user)
         serializer = DocSerializer(doc)
         return Response({
             serializer.data
@@ -54,7 +59,7 @@ class PatchDoc(APIView):
         user = User.objects.get(id=user_id)
 
         doc = Document.objects.get(id=id)
-        if doc.user != user:
+        if doc.owner != user:
             return Response({
                 'error': 'not document owner'
             },status=status.HTTP_401_UNAUTHORIZED)
