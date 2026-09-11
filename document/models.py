@@ -10,3 +10,17 @@ class Document(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     viewers = models.JSONField(default=list, blank=True)
     editors = models.JSONField(default=list, blank=True)
+
+class DocumentVersion(models.Model):
+    document_id = models.PositiveIntegerField()
+    version_number = models.PositiveIntegerField()
+    content = models.CharField()
+    title = models.CharField()
+    edited_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class AuditLog(models.Model):
+    document_id = models.PositiveIntegerField()
+    user_id = models.PositiveIntegerField()
+    action = models.CharField()
+    created_at = models.DateTimeField(auto_now_add=True)
