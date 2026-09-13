@@ -16,7 +16,7 @@ class DocumentVersion(models.Model):
     version_number = models.PositiveIntegerField()
     content = models.CharField()
     title = models.CharField()
-    edited_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    edited_by = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
 class AuditLog(models.Model):
