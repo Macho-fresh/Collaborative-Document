@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'document',
-    'rest_framework'
+    'rest_framework',
+    'daphne',
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -75,6 +77,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'project.wsgi.application'
+ASGI_APPLICATION = 'project.asgi.application' 
 
 
 # Database
@@ -142,4 +145,13 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30)
+}
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
 }
