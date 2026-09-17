@@ -3,6 +3,9 @@ from channels.generic.websocket import WebsocketConsumer
 import json
 from .models import *
 
+# connect to document to edit ex: api/document/12
+# edit functionality is here 
+
 
 class ChatConsumer(WebsocketConsumer):
 
@@ -13,9 +16,9 @@ class ChatConsumer(WebsocketConsumer):
         self.room = None
 
     def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = f'chat_{self.room_name}'
-        self.room = Room.objects.get(name=self.room_name)
+        self.room_name = self.scope['url_route']['kwargs']['id']
+        self.room_group_name = f'doc_{self.room_name}'
+        self.room = Document.objects.get(id=self.room_name)
 
         # connection has to be accepted
         self.accept()
