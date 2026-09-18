@@ -2,51 +2,55 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 import json
 from .models import *
+from accounts.models import *
 
 # connect to document to edit ex: api/document/12
 # edit functionality is here 
+# basically its: user1 edits and sends, 
+# backend updates but i want a way for users to see the doc update in real time
+# user 2 wants to edit, sends version number alongside edit, that doc is then changed to that
 
 
-class ChatConsumer(WebsocketConsumer):
+from channels.generic.websocket import WebsocketConsumer
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
-        self.room_name = None
-        self.room_group_name = None
-        self.room = None
+class MyConsumer(WebsocketConsumer):
 
     def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['id']
-        self.room_group_name = f'doc_{self.room_name}'
-        self.room = Document.objects.get(id=self.room_name)
-
-        # connection has to be accepted
         self.accept()
+        id = self.scope['id']
+        self.user_id = self.scope['user']['id']
+        self.doc = Document.objects.get(id=id)
+        self.user = User.objects.get(id=self.user_id)
 
-        # join the room group
-        async_to_sync(self.channel_layer.group_add)(
-            self.room_group_name,
-            self.channel_name,
-        )
-
-    def disconnect(self, close_code):
-        async_to_sync(self.channel_layer.group_discard)(
-            self.room_group_name,
-            self.channel_name,
-        )
+        self.close()
 
     def receive(self, text_data=None, bytes_data=None):
-        text_data_json = json.loads(text_data)
-        message = text_data_json['message']
+        if self.doc.owner != self.user or self.user_id not in self.doc.editors:
+            self.send(text_data="Invalid version")
+        if self.doc.version == text_data['version']:
+            self.doc.title = text_data['title']
+            self.doc.content = text_data['content']
+            self.doc.version += 1
+            self.doc.save()
 
-        # send chat message event to the room
-        async_to_sync(self.channel_layer.group_send)(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
-                'message': message,
-            }
-        )
+            DocumentVersion.objects.create(
+                document_id = id,
+                version_number = self.doc.version,
+                content = self.doc.content,
+                title = self.doc.title,
+                edited_by = self.user_id
+            )
 
-    def chat_message(self, event):
-        self.send(text_data=json.dumps(event))
+            AuditLog.objects.create(
+                document_id = id,
+                user_id = self.user_id,
+                action = 'Edited Document'
+            )
+            self.send(text_data="Invalid version")
+
+        self.send(text_data="Hello world!")
+        
+        self.close()
+
+    def disconnect(self, close_code):
+        pass
