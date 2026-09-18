@@ -50,7 +50,7 @@ class MyConsumer(WebsocketConsumer):
 
         self.send(text_data="Hello world!")
         
-        self.close()
+        
 
     def disconnect(self, close_code):
-        pass
+        self.close()
