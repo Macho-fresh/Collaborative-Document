@@ -4,4 +4,9 @@ from .models import *
 class DocSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
-        field = "__all__"
+        fields = "__all__"
+
+class LogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditLog
+        fields = "__all__"
