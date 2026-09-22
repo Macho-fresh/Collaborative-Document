@@ -24,7 +24,7 @@ class CreateDoc(APIView):
         )
 
         DocumentVersion.objects.create(
-            document_id = id,
+            document_id = doc.id,
             version_number = doc.version,
             content = doc.content,
             title = doc.title,
@@ -48,17 +48,22 @@ class GetAllDoc(APIView):
         user_id = request.user.id
         user = User.objects.get(id=user_id)
         doc = Document.objects.all()
+        accessible_docs = []
+
         for i in doc:
             if user_id in i.viewers or user_id in i.editors or i.owner == user:
-                serializer = DocSerializer(i)
                 AuditLog.objects.create(
-                    document_id = doc.id,
+                    document_id = i.id,
                     user_id = user_id,
                     action = 'Viewed All Documents'
                 )
-                return Response({
-                    serializer.data
-                },status=status.HTTP_200_OK)
+                accessible_docs.append(i)
+
+        if accessible_docs:
+            serializer = DocSerializer(accessible_docs, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
         return Response({
             'error': 'you dont have any documents'
         },status=status.HTTP_401_UNAUTHORIZED)
@@ -72,9 +77,7 @@ class GetDoc(APIView):
         doc = Document.objects.get(id=id)
         if user_id in doc.viewers or user_id in doc.editors or doc.owner == user:
             serializer = DocSerializer(doc)
-            return Response({
-                serializer.data
-            },status=status.HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         AuditLog.objects.create(
             document_id = doc.id,
             user_id = user_id,
@@ -84,27 +87,6 @@ class GetDoc(APIView):
             'error': 'you are not authorized to view this document'
         },status=status.HTTP_401_UNAUTHORIZED)
 
-# class PatchDoc(APIView):
-#     permission_classes = [IsAuthenticated]
-#     def patch(self, request, id):
-#         user_id = request.user.id
-#         title = request.data.get('title')
-#         content = request.data.get('content')
-#         user = User.objects.get(id=user_id)
-
-#         doc = Document.objects.get(id=id)
-#         if doc.owner != user or user_id not in doc.editors:
-#             return Response({
-#                 'error': 'not document owner'
-#             },status=status.HTTP_401_UNAUTHORIZED)
-#         doc.title = title
-#         doc.content = content
-#         doc.save()
-#         serializer = DocSerializer(doc)
-
-#         return Response({
-#             serializer.data
-#         },status=status.HTTP_202_ACCEPTED)
 
 class DeleteDoc(APIView):
     permission_classes = [IsAuthenticated]
@@ -207,3 +189,15 @@ class EditView(APIView):
             return Response({
                 'message': 'edited succesfully'
             }, status=status.HTTP_200_OK)
+
+class ViewAuditLog(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user_id = request.user.id
+        try:
+            log = AuditLog.objects.filter(user_id = user_id)
+            serializer = LogSerializer(log, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except AuditLog.DoesNotExist:
+            return Response({'error': 'you have no logs'}, status=status.HTTP_404_NOT_FOUND)
