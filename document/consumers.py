@@ -9,6 +9,7 @@ from accounts.models import *
 # basically its: user1 edits and sends, 
 # backend updates but i want a way for users to see the doc update in real time
 # user 2 wants to edit, sends version number alongside edit, that doc is then changed to that
+# show online users
 
 
 from channels.generic.websocket import WebsocketConsumer
@@ -17,6 +18,11 @@ class MyConsumer(WebsocketConsumer):
 
     def connect(self):
         self.accept()
+
+        # self.send(text_data=json.dumps({
+        #     'type': 'connection_established',
+        #     'message': 'You are now connected'
+        # }))
         id = self.scope['id']
         self.user_id = self.scope['user']['id']
         self.doc = Document.objects.get(id=id)
