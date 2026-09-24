@@ -18,11 +18,25 @@ class MyConsumer(WebsocketConsumer):
 
     def connect(self):
         self.accept()
+        self.group_name = f'doc_{self.scope['id']}'
+        async_to_sync(self.channel_layer.group_add)(
+            self.group_name,
+            self.channel_name
+        )
 
-        # self.send(text_data=json.dumps({
-        #     'type': 'connection_established',
-        #     'message': 'You are now connected'
-        # }))
+        self.send(text_data=json.dumps({
+            'message': 'You are now connected'
+        }))
+
+        self.username = User.objects.get(id=self.user_id).username
+        async_to_sync(self.channel_layer.group_send)(
+            self.group_name,
+            {
+                'type': 'online_offline',
+                'message': f'{self.username} joined'
+            }
+        )
+
         id = self.scope['id']
         self.user_id = self.scope['user']['id']
         self.doc = Document.objects.get(id=id)
@@ -31,11 +45,14 @@ class MyConsumer(WebsocketConsumer):
         self.close()
 
     def receive(self, text_data=None, bytes_data=None):
+        data = json.loads(text_data)
         if self.doc.owner != self.user or self.user_id not in self.doc.editors:
-            self.send(text_data="Invalid version")
-        if self.doc.version == text_data['version']:
-            self.doc.title = text_data['title']
-            self.doc.content = text_data['content']
+            self.send(json.dumps({
+                'error': 'unauthorized'
+            }))
+        if self.doc.version == data['version']:
+            self.doc.title = data['title']
+            self.doc.content = data['content']
             self.doc.version += 1
             self.doc.save()
 
@@ -52,11 +69,27 @@ class MyConsumer(WebsocketConsumer):
                 user_id = self.user_id,
                 action = 'Edited Document'
             )
-            self.send(text_data="Invalid version")
+        self.send(text_data="Invalid version")
 
         self.send(text_data="Hello world!")
-        
-        
 
+
+    def online_offline(self, event):
+        self.send(
+            json.dumps({'message': event['message']})
+        )
+
+        
     def disconnect(self, close_code):
-        self.close()
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name
+        )
+
+        async_to_sync(self.channel_layer.group_send)(
+            self.group_name,
+            {
+                'type': 'online_offline',
+                'message': f'{self.username} left'
+            }
+        )
