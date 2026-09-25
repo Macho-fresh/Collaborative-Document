@@ -7,7 +7,7 @@ from django.core.asgi import get_asgi_application
 from django.urls import path
 from document.consumers import MyConsumer
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project.settings')
 
 application = ProtocolTypeRouter({
   'http': get_asgi_application(),
@@ -15,7 +15,7 @@ application = ProtocolTypeRouter({
   "websocket": AllowedHostsOriginValidator(
         AuthMiddlewareStack(
             URLRouter([
-                path("doc/", MyConsumer.as_asgi()),
+                path("doc/<int:id>/", MyConsumer.as_asgi()),
             ])
         )
     ),
