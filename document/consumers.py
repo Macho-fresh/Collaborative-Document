@@ -18,7 +18,7 @@ class MyConsumer(WebsocketConsumer):
 
     def connect(self):
         self.accept()
-        self.group_name = f'doc_{self.scope['id']}'
+        self.group_name = f'doc_{self.scope["url_route"]["kwargs"]["id"]}'
         async_to_sync(self.channel_layer.group_add)(
             self.group_name,
             self.channel_name
