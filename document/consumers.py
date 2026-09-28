@@ -24,9 +24,12 @@ class MyConsumer(WebsocketConsumer):
             self.channel_name
         )
 
+        print(self.scope['user'])
+
         self.send(text_data=json.dumps({
             'message': 'You are now connected'
         }))
+        self.user_id = self.scope['user']['id']
 
         self.username = User.objects.get(id=self.user_id).username
         async_to_sync(self.channel_layer.group_send)(
