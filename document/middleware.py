@@ -1,13 +1,34 @@
-# from .models import AuditLog
-# from accounts.models import User
+from accounts.models import User
+from channels.db import database_sync_to_async
+from django.contrib.auth.models import AnonymousUser
+from urllib.parse import parse_qs
+from rest_framework_simplejwt.tokens import AccessToken
 
-# class Middleware():
-#     def __init__(self, get_response):
-#         self.get_response = get_response
+@database_sync_to_async
+def get_user_from_token(token_string):
+    try:
+        access_token = AccessToken(token_string)
+        user_id = access_token['user_id']
+        return User.objects.get(id=user_id)
+    except:
+        user = AnonymousUser()
+    return user
 
-#     def __call__(self, request):
-#         if request.path == 
-#         AuditLog.objects.create(
+class JWTMiddleWare:
+    def __init__(self, app):
+        self.app = app
 
-#         )
-#         return self.get_response(request)
+    async def __call__(self, scope, receive, send):
+        raw_token = scope['query_string'].decode("utf-8")
+        token_dict = parse_qs(raw_token)
+        token_list = token_dict.get('token')
+
+        if token_list:
+            token = token_list[0]
+            user = await get_user_from_token(token)
+        else:
+            user = AnonymousUser()
+
+        scope['user'] = user
+
+        return await self.app(scope, receive, send)
