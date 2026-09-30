@@ -3,20 +3,12 @@ from channels.generic.websocket import WebsocketConsumer
 import json
 from .models import *
 from accounts.models import *
-
-# connect to document to edit ex: api/document/12
-# edit functionality is here 
-# basically its: user1 edits and sends, 
-# backend updates but i want a way for users to see the doc update in real time
-# user 2 wants to edit, sends version number alongside edit, that doc is then changed to that
-# show online users
-
-
 from channels.generic.websocket import WebsocketConsumer
 
 class MyConsumer(WebsocketConsumer):
 
     def connect(self):
+        user = self.scope['user']
         self.accept()
         self.group_name = f'doc_{self.scope["url_route"]["kwargs"]["id"]}'
         async_to_sync(self.channel_layer.group_add)(
@@ -24,14 +16,17 @@ class MyConsumer(WebsocketConsumer):
             self.channel_name
         )
 
+        self.doc_id = self.scope["url_route"]["kwargs"]["id"]
         print(self.scope['user'])
+        print(self.scope["url_route"]["kwargs"]["id"])
+
 
         self.send(text_data=json.dumps({
             'message': 'You are now connected'
         }))
-        self.user_id = self.scope['user']['id']
+        self.user_id = user.id
 
-        self.username = User.objects.get(id=self.user_id).username
+        self.username = user.username
         async_to_sync(self.channel_layer.group_send)(
             self.group_name,
             {
@@ -40,12 +35,11 @@ class MyConsumer(WebsocketConsumer):
             }
         )
 
-        id = self.scope['id']
-        self.user_id = self.scope['user']['id']
-        self.doc = Document.objects.get(id=id)
-        self.user = User.objects.get(id=self.user_id)
+        # id = self.scope['id']
+        self.user_id = self.scope['user'].id
+        self.doc = Document.objects.get(id=self.doc_id)
+        self.user = user
 
-        self.close()
 
     def receive(self, text_data=None, bytes_data=None):
         data = json.loads(text_data)
@@ -85,7 +79,7 @@ class MyConsumer(WebsocketConsumer):
         
     def disconnect(self, close_code):
         async_to_sync(self.channel_layer.group_discard)(
-            self.room_group_name,
+            self.group_name,
             self.channel_name
         )
 
