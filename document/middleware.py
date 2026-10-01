@@ -6,15 +6,17 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 @database_sync_to_async
 def get_user_from_token(token_string):
+    print(token_string)
     try:
         access_token = AccessToken(token_string)
         user_id = access_token['user_id']
-        return User.objects.get(id=user_id)
-    except:
+        user = User.objects.get(id=user_id)
+    except Exception as e:
+        print(f'This line failed because of {e}')
         user = AnonymousUser()
     return user
 
-class JWTMiddleWare:
+class JWTAuthMiddleWare:
     def __init__(self, app):
         self.app = app
 
