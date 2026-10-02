@@ -4,6 +4,7 @@ import json
 from .models import *
 from accounts.models import *
 from channels.generic.websocket import WebsocketConsumer
+from django.db import transaction
 
 class MyConsumer(WebsocketConsumer):
 
@@ -47,28 +48,32 @@ class MyConsumer(WebsocketConsumer):
             self.send(json.dumps({
                 'error': 'unauthorized'
             }))
+        print(data['version'])
+        print(self.doc.version)
         if self.doc.version == data['version']:
-            self.doc.title = data['title']
-            self.doc.content = data['content']
-            self.doc.version += 1
-            self.doc.save()
+            with transaction.atomic():
+                    self.doc.title = data['title']
+                    self.doc.content = data['content']
+                    self.doc.version += 1
+                    print('changes made')
+                    self.doc.save()
 
-            DocumentVersion.objects.create(
-                document_id = id,
-                version_number = self.doc.version,
-                content = self.doc.content,
-                title = self.doc.title,
-                edited_by = self.user_id
-            )
+                    DocumentVersion.objects.create(
+                        document_id = self.scope["url_route"]["kwargs"]["id"],
+                        version_number = self.doc.version,
+                        content = self.doc.content,
+                        title = self.doc.title,
+                        edited_by = self.user_id
+                    )
 
-            AuditLog.objects.create(
-                document_id = id,
-                user_id = self.user_id,
-                action = 'Edited Document'
-            )
-        self.send(text_data="Invalid version")
-
-        self.send(text_data="Hello world!")
+                    AuditLog.objects.create(
+                        document_id = self.scope["url_route"]["kwargs"]["id"],
+                        user_id = self.user_id,
+                        action = 'Edited Document'
+                    )
+                    self.send(text_data="Changes Added")
+        else:
+            self.send(text_data="Invalid version")
 
 
     def online_offline(self, event):
