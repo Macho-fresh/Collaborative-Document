@@ -34,5 +34,5 @@ def loadbalancer():
         client_socket.close()
         backend_socket.close()
 
-if __name__ == '__main__':
-    loadbalancer()
+# if __name__ == '__main__':
+#     loadbalancer()
