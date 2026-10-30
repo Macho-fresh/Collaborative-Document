@@ -12,6 +12,8 @@ class MyConsumer(WebsocketConsumer):
         user = self.scope['user']
         # check if that user is an editor or viewere of this particlar document
         doc = Document.objects.get(id=(self.scope["url_route"]["kwargs"]["id"]))
+        print(f'version: {doc.version}')
+
         self.accept()
         if user.id not in doc.editors or user.id not in doc.viewers:
             print('user not in viewers or editors')
@@ -54,6 +56,7 @@ class MyConsumer(WebsocketConsumer):
     def receive(self, text_data=None, bytes_data=None):
         data = json.loads(text_data)
         if self.doc.owner != self.user or self.user_id not in self.doc.editors or self.user_id not in self.doc.viewers:
+            print('unauthorized')
             self.send(json.dumps({
                 'error': 'unauthorized'
             }))

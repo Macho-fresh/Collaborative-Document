@@ -17,7 +17,7 @@ def get_server():
 def loadbalancer():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind('127.0.0.0', 8000)
+    server.bind(('127.0.0.1', 8000))
     server.listen(10)
     print('load balancer running on port 8000')
     while True:
@@ -26,7 +26,7 @@ def loadbalancer():
         backend_host, backend_port = get_server()
         print(f'forwarding conection to: {backend_host}:{backend_port}')
         backend_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        backend_socket.connect(backend_host, backend_port)
+        backend_socket.connect((backend_host, backend_port))
         data = client_socket.recv(4096)
         backend_socket.sendall(data)
         response = backend_socket.recv(4096)
@@ -34,5 +34,5 @@ def loadbalancer():
         client_socket.close()
         backend_socket.close()
 
-# if __name__ == '__main__':
-#     loadbalancer()
+if __name__ == '__main__':
+    loadbalancer()
