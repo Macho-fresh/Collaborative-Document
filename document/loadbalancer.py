@@ -1,3 +1,6 @@
+import aiohttp
+import asyncio
+
 servers = [
     {'address': '127.0.0.1:8001', 'status': 'healthy', 'active_connections': 0, 'requests': 0},
     {'address': '127.0.0.1:8002', 'status': 'healthy', 'active_connections': 0, 'requests': 0},
@@ -5,7 +8,7 @@ servers = [
 ]
 
 index = -1
-last_healthy = 0
+
 def get_next_server():
     global index
 
