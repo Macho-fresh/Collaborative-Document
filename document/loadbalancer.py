@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 from aiohttp import web
+from multidict import CIMultiDict, CIMultiDictProxy
 
 servers = [
     {'address': '127.0.0.1:8001', 'status': 'healthy', 'active_connections': 0, 'requests': 0},
@@ -20,28 +21,50 @@ def get_next_server():
     return None  
 
 # implement filter_headers() for independent socket handling 
-# strip transfer-encoding and connection and its addional headers if any  
+# strip transfer-encoding and connection and its addional headers if any 
+
+def filter_headers(headers, extra_remove=None):
+    resp_headers = CIMultiDict() 
+    to_remove = {'connection', 'transfer-encoding'}
+    if extra_remove:
+        for i in extra_remove:
+            to_remove.add(i)
+
+    try:
+        if headers['Connection']:
+            for l in headers['Connection'].split(','):
+                to_remove.add(l.strip().lower())
+    except KeyError:
+        pass
+
+    for k,v in headers.items():
+        if k.lower() not in to_remove:
+            resp_headers.add(k, v)
+        
+    resp_headers = CIMultiDictProxy(resp_headers)
+    return resp_headers
+    
 
 async def loadbalancer(request):
     server = get_next_server()
-    method = request.method
     headers = request.headers
-    print(f'load balancer header: {headers}')
+    browser_headers = filter_headers(headers, 'host')
+    # print(f'browser header: {resp_headers}')
     body = await request.read()
 
     async with aiohttp.ClientSession() as session:
         if server:
-            async with session.request(method, f"http://{server['address']}{request.path_qs}", data=body, headers=headers) as response:
+            async with session.request(request.method, f"http://{server['address']}{request.path_qs}", data=body, headers=browser_headers) as response:
                 print(f'forwarding request to {server['address']}')
                 outgoing_body = await response.read()
                 outgoing_headers = response.headers
-                print(f'server header: {outgoing_headers}')
-
-                return web.Response(status=response.status, headers=outgoing_headers, body=outgoing_body)
+                django_headers = filter_headers(outgoing_headers)
+                
+                return web.Response(status=response.status, headers=django_headers, body=outgoing_body)
         return web.Response(text='all servers are unhealthy', status=503)
 
 app = web.Application()
 app.add_routes([web.route('*', '/{tail:.*}', loadbalancer)])
 
 if __name__ == '__main__':
-    web.run_app(app, host='127.0.0.1', port=8080)
+    web.run_app(app, host='127.0.0.1', port=8000)
