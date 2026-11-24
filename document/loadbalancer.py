@@ -17,17 +17,27 @@ def get_next_server():
         if servers[index]['status'] == 'healthy':
             return servers[index]
         index = (index + 1) % len(servers)
-    return None    
+    return None  
+
+# implement filter_headers() for independent socket handling 
+# strip transfer-encoding and connection and its addional headers if any  
 
 async def loadbalancer(request):
     server = get_next_server()
-    method = request.method.lower()
+    method = request.method
+    headers = request.headers
+    print(f'load balancer header: {headers}')
+    body = await request.read()
 
     async with aiohttp.ClientSession() as session:
         if server:
-            async with session.request(method, f"http://{server['address']}{request.path_qs}") as response:
+            async with session.request(method, f"http://{server['address']}{request.path_qs}", data=body, headers=headers) as response:
                 print(f'forwarding request to {server['address']}')
-                return web.Response(text=f'{await response.text()}', status=response.status)
+                outgoing_body = await response.read()
+                outgoing_headers = response.headers
+                print(f'server header: {outgoing_headers}')
+
+                return web.Response(status=response.status, headers=outgoing_headers, body=outgoing_body)
         return web.Response(text='all servers are unhealthy', status=503)
 
 app = web.Application()
