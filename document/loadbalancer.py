@@ -25,10 +25,19 @@ def get_next_server():
 
 def filter_headers(headers, extra_remove=None):
     resp_headers = CIMultiDict() 
-    to_remove = {'connection', 'transfer-encoding'}
+    to_remove = {
+    'connection',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailer',
+    'transfer-encoding',
+    'upgrade'
+    }
     if extra_remove:
         for i in extra_remove:
-            to_remove.add(i)
+            to_remove.add(i.lower())
 
     try:
         if headers['Connection']:
@@ -48,14 +57,14 @@ def filter_headers(headers, extra_remove=None):
 async def loadbalancer(request):
     server = get_next_server()
     headers = request.headers
-    browser_headers = filter_headers(headers, 'host')
-    # print(f'browser header: {resp_headers}')
+    browser_headers = filter_headers(headers, extra_remove={'host', 'content-length'})
+    # print(f'browser header: {browser_headers}')
     body = await request.read()
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(auto_decompress=False) as session:
         if server:
             async with session.request(request.method, f"http://{server['address']}{request.path_qs}", data=body, headers=browser_headers) as response:
-                print(f'forwarding request to {server['address']}')
+                print(f'forwarding request to {server["address"]}')
                 outgoing_body = await response.read()
                 outgoing_headers = response.headers
                 django_headers = filter_headers(outgoing_headers)
