@@ -16,7 +16,7 @@ application = ProtocolTypeRouter({
 
   "websocket": JWTAuthMiddleWare(
             URLRouter([
-                path("doc/<int:id>/", MyConsumer.as_asgi()),
+                path("edit-doc/<int:id>/", MyConsumer.as_asgi()),
             ])  
     ),
 })
